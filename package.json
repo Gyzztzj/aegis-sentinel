@@ -1,7 +1,7 @@
 {
   "name": "aegis-sentinel",
   "version": "1.0.0",
-  "description": "An Electron application with React and TypeScript",
+  "description": "Aegis Sentinel - 面向前端工程化的本地智能巡检工具，基于微内核与插件化架构，支持多维度项目体检与AI优化建议输出",
   "main": "./out/main/index.js",
   "author": "example.com",
   "homepage": "https://electron-vite.org",
