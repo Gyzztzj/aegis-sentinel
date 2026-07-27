@@ -5,3 +5,8 @@ out
 .eslintcache
 *.log*
 .env
+.env.local
+.vscode/
+build/
+resources/
+.prettiercache

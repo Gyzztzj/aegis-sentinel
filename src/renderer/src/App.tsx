@@ -34,7 +34,10 @@ function App(): React.ReactNode {
 
   // 导出报告
   const handleExportReport = async (): Promise<void> => {
-    const res = await window.electron.ipcRenderer.invoke('export-report', results)
+    const res = await window.electron.ipcRenderer.invoke('export-report', {
+      results,
+      aiAdvice
+    })
     if (res.success) {
       alert(`报告已导出到 ${res.path}`)
     }
@@ -107,7 +110,7 @@ function App(): React.ReactNode {
         <span>⚠️ {warnings.length} 警告</span>
         <span>ℹ️ {infos.length} 提示</span>
       </div>
-      {/* {errors.length > 0 && (
+      {errors.length > 0 && (
         <div style={{ background: '#FEF2F2', padding: 12, marginBottom: 12, borderRadius: 6 }}>
           <h3 style={{ color: '#DC2626' }}>🔴 高危问题</h3>
           {errors.map((item, i) => (
@@ -134,7 +137,7 @@ function App(): React.ReactNode {
             【{item.plugin}】{item.message}
           </div>
         )
-      })} */}
+      })}
       {aiAdvice && (
         <div
           style={{

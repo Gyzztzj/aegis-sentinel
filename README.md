@@ -4,7 +4,7 @@
 
 ## 🌟 项目简介
 
-Aegis Sentinel 是一套基于 **微内核 + 插件化架构** 的本地前端工程检测工具，面向前端开发者，当前已实现依赖风险检测，可通过插件机制扩展至配置规范、代码级分析等多维度项目体检能力。
+Aegis Sentinel 是一套基于 **微内核 + 插件化架构** 的本地前端工程检测工具，面向前端开发者，提供多维度项目体检能力。
 
 **核心特性：**
 
@@ -54,6 +54,8 @@ AI 优化建议功能需要配置 API Key。创建 `.env` 文件：
 AI_API_KEY=your-api-key-here
 ```
 
+> 当前使用火山引擎 Doubao API，如需更换其他 API 请修改 `src/main/ipc/scan-handlers.ts` 中的配置。
+
 ## 🛠️ 技术栈
 
 | 模块     | 技术                                |
@@ -72,17 +74,34 @@ src/
 │   │   ├── scanner.ts    # 扫描器
 │   │   └── context.ts    # 扫描上下文
 │   ├── plugins/          # 插件目录
-│   │   ├── dep-count.ts  # 依赖风险检测插件
-│   │   └── index.ts      # 插件注册
+│   │   ├── dependency-audit.ts          # 依赖审计插件
+│   │   ├── check-env.ts                 # 环境变量检测插件
+│   │   ├── check-project-standard.ts    # 项目规范检测插件
+│   │   ├── check-tsconfig.ts            # TypeScript 配置检测插件
+│   │   ├── check-build-artifacts.ts     # 构建产物检测插件
+│   │   ├── check-browserslist.ts        # 浏览器兼容性检测插件
+│   │   ├── check-package-manager.ts     # 包管理器一致性检测插件
+│   │   ├── check-node-version.ts        # Node 版本管理检测插件
+│   │   └── index.ts                     # 插件注册
 │   ├── ipc/              # IPC 通信
 │   │   └── scan-handlers.ts
 │   ├── types/            # 类型定义
 │   └── index.ts          # 入口文件
 ├── preload/              # 预加载脚本
+│   ├── index.ts          # 预加载逻辑
+│   └── index.d.ts        # 类型声明
 └── renderer/             # 渲染进程（React）
+    ├── index.html        # HTML 入口
     └── src/
         ├── App.tsx       # 主应用组件
-        └── main.tsx      # 入口文件
+        ├── main.tsx      # 入口文件
+        ├── components/   # 组件目录
+        │   └── Versions.tsx
+        └── assets/       # 静态资源
+            ├── base.css
+            ├── main.css
+            ├── electron.svg
+            └── wavy-lines.svg
 ```
 
 ## 🧩 插件开发
@@ -139,18 +158,55 @@ export const myPlugin: IScanPlugin = {
 
 ## ✅ 当前检测能力
 
-### 依赖风险检测插件
+### 依赖审计插件
 
 - ✅ 废弃包检测
-- ✅ 高危漏洞检测（CVE 数据库）
+- ✅ 高危漏洞检测（OSV API）
 - ✅ 过期依赖检测
 - ✅ 重复依赖检测
+
+### 环境变量检测插件
+
+- ✅ 明文密钥检测
+- ✅ 必填变量检查
+
+### 项目规范检测插件
+
+- ✅ README.md 检查
+- ✅ LICENSE 文件检查
+- ✅ .editorconfig 检查
+- ✅ .gitignore 检查
+
+### TypeScript 配置检测插件
+
+- ✅ strict 模式检查
+- ✅ 编译目标版本检查
+- ✅ 路径别名配置检查
+- ✅ sourceMap 配置检查
+
+### 构建产物检测插件
+
+- ✅ .gitignore 构建产物配置检查
+- ✅ dist 目录大小分析
+
+### 浏览器兼容性检测插件
+
+- ✅ browserslist 配置检查
+- ✅ .browserslistrc 文件检查
+
+### 包管理器一致性检测插件
+
+- ✅ 锁文件唯一性检测
+
+### Node 版本管理检测插件
+
+- ✅ .nvmrc 文件检查
+- ✅ engines.node 配置检查
 
 ## 🗺️ 路线图
 
 - [ ] **CLI 命令行工具**：支持 CI/CD 流水线集成
 - [ ] **AST 代码级分析**：深度代码质量检测
-- [ ] **配置规范检测**：ESLint、Prettier、Git 配置等
 - [ ] **性能检测**：构建性能、包体积分析
 - [ ] **安全扫描**：敏感信息泄露检测
 

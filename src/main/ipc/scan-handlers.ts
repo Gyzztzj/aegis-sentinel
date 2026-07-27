@@ -26,7 +26,8 @@ export function registerScanHandlers(): void {
   })
 
   // 导出报告
-  ipcMain.handle('export-report', async (_event, results: IScanResult[]) => {
+  ipcMain.handle('export-report', async (_event, props) => {
+    const { results, aiAdvice } = props
     // 生成markdown内容
     let md = '# Aegis Sentinel 检测报告\n\n'
     md += `> 生成时间：${new Date().toLocaleString()}\n\n`
@@ -64,6 +65,10 @@ export function registerScanHandlers(): void {
       })
     }
 
+    if (aiAdvice) {
+      md += '## 🤖 AI 优化建议\n\n'
+      md += aiAdvice + '\n\n'
+    }
     // 弹出保存对话框
     const saveResult = await dialog.showSaveDialog({
       defaultPath: `Aegis-检测报告-${Date.now()}.md`,
