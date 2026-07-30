@@ -9,23 +9,28 @@ export async function runScanner(
   plugins: IScanPlugin[]
 ): Promise<IScanContext> {
   const ctx = createContext(projectPath)
+  // 过滤启用的插件
+  const enabledPlugins = plugins.filter((p) => p.enabled)
 
-  for (const plugin of plugins) {
-    if (!plugin.enabled) {
-      continue
-    }
+  // 并行运行
+  const resultsArrays = await Promise.all(
+    enabledPlugins.map(async (plugin) => {
+      try {
+        return await plugin.run(projectPath)
+      } catch (error: unknown) {
+        return [
+          {
+            plugin: plugin.name,
+            level: 'error' as const,
+            message: `插件执行异常：${(error as Error).message || '未知错误'}`
+          }
+        ]
+      }
+    })
+  )
 
-    try {
-      const results = await plugin.run(ctx.projectPath)
-      ctx.results.push(...results)
-    } catch (error: unknown) {
-      ctx.results.push({
-        plugin: plugin.name,
-        level: 'error',
-        message: `插件执行异常：${error instanceof Error ? error.message : '未知错误'}`
-      })
-    }
-  }
+  // 合并结果
+  ctx.results.push(...resultsArrays.flat())
 
   return ctx
 }

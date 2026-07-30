@@ -3,7 +3,17 @@ import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  main: {},
+  main: {
+    build: {
+      rollupOptions: {
+        external: ['worker_threads'],
+        input: {
+          index: resolve(__dirname, 'src/main/index.ts'),
+          'workers/scanner-worker': resolve(__dirname, 'src/main/workers/scanner-worker.ts')
+        }
+      }
+    }
+  },
   preload: {},
   renderer: {
     resolve: {

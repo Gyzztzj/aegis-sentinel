@@ -3,25 +3,6 @@ import { IScanPlugin, IScanResult } from '../types'
 import { existsSync, readFileSync } from 'fs'
 import axios from 'axios'
 
-// 检查依赖包是否存在高危漏洞
-async function checkVulnerability(depName: string, version: string): Promise<IScanResult[]> {
-  try {
-    const response = await axios.post('https://api.osv.dev/v1/query', {
-      package: { name: depName, ecosystem: 'npm' },
-      version: version
-    })
-
-    const vulns = response.data?.vulns || []
-    return vulns.map((vuln) => ({
-      plugin: '依赖审计',
-      level: 'error' as const,
-      message: `高危漏洞：${depName}@${version} - ${vuln.summary || vuln.id}（${vuln.id}），建议升级至修复版本`
-    }))
-  } catch {
-    return [] // 请求失败静默处理，不阻断检测
-  }
-}
-
 export const dependencyAuditPlugin: IScanPlugin = {
   name: '依赖审计',
   enabled: true,
@@ -40,7 +21,7 @@ export const dependencyAuditPlugin: IScanPlugin = {
       results.push({
         plugin: this.name,
         level: 'error',
-        message: 'tsconfig.json 解析失败，请检查 JSON 格式'
+        message: 'package.json 解析失败，请检查 JSON 格式'
       })
       return results
     }
@@ -57,46 +38,66 @@ export const dependencyAuditPlugin: IScanPlugin = {
 
     // 用于检测重复依赖
     const depNameCount = new Map<string, number>()
+    const depEntries = Object.entries(allDeps)
+    const networkResults = await Promise.all(
+      depEntries.map(async ([depName, depVersion]) => {
+        //  统计出现次数（重复依赖检查）
+        depNameCount.set(depName, (depNameCount.get(depName) || 0) + 1)
 
-    for (const [depName, depVersion] of Object.entries(allDeps)) {
-      //  统计出现次数（重复依赖检查）
-      depNameCount.set(depName, (depNameCount.get(depName) || 0) + 1)
-
-      try {
-        const { data } = await axios.get(`https://registry.npmjs.org/${depName}`)
-
-        // 1、检查废弃包
-        if (data?.deprecated) {
-          results.push({
-            plugin: this.name,
-            level: 'warning',
-            message: `废弃包：${depName} - ${data.deprecated}`
-          })
-        }
-
-        // 2、检查高危漏洞
-        const vulns = await checkVulnerability(depName, depVersion as string)
-        results.push(...vulns)
-
-        // 3、检查过期依赖
-        const versions = Object.keys(data.versions)
-        const latestVersion = versions[versions.length - 1] // 最新版本
+        const itemResults: IScanResult[] = []
         const currentVersion = (depVersion as string).replace('^', '').replace('~', '')
-        if (currentVersion !== latestVersion) {
-          results.push({
-            plugin: this.name,
+
+        try {
+          const { data } = await axios.get(`https://registry.npmjs.org/${depName}`)
+
+          // 1、检查废弃包
+          if (data.deprecated) {
+            itemResults.push({
+              plugin: '依赖风险检测',
+              level: 'error',
+              message: `废弃包：${depName} - ${data.deprecated}`
+            })
+          }
+
+          const versions = Object.keys(data.versions)
+          const latestVersion = versions[versions.length - 1]
+          // 2、检查过期依赖
+          if (latestVersion !== currentVersion) {
+            itemResults.push({
+              plugin: '依赖风险检测',
+              level: 'warning',
+              message: `过期依赖：${depName} 当前 ${currentVersion}，最新 ${latestVersion}`
+            })
+          }
+          // 3、检查高危漏洞
+          try {
+            const vulnResponse = await axios.post('https://api.osv.dev/v1/query', {
+              package: { name: depName, ecosystem: 'npm' },
+              version: currentVersion
+            })
+            const vulns = vulnResponse.data?.vulns || []
+            vulns.forEach((vuln) => {
+              itemResults.push({
+                plugin: '依赖风险检测',
+                level: 'error',
+                message: `高危漏洞：${depName}@${currentVersion} - ${vuln.summary || vuln.id}（${vuln.id}）`
+              })
+            })
+          } catch {
+            // 请求失败静默处理，不阻断检测
+          }
+        } catch {
+          itemResults.push({
+            plugin: '依赖风险检测',
             level: 'warning',
-            message: `过期依赖：${depName} 当前 ${currentVersion}，最新 ${latestVersion}`
+            message: `无法检查 ${depName}，网络请求失败或包不存在`
           })
         }
-      } catch {
-        results.push({
-          plugin: this.name,
-          level: 'warning',
-          message: `无法检查 ${depName}，网络请求失败或包不存在`
-        })
-      }
-    }
+        return itemResults
+      })
+    )
+    // 合并所有结果
+    results.push(...networkResults.flat())
 
     // 3、检查重复依赖
     depNameCount.forEach((count, depName) => {

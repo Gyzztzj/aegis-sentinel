@@ -2,11 +2,12 @@
  * 处理扫描相关事件
  */
 import { ipcMain, dialog } from 'electron'
-import { plugins } from '../plugins'
-import { runScanner } from '../core/scanner'
 import { IScanResult } from '../types'
 import { writeFileSync } from 'fs'
 import axios, { AxiosError } from 'axios'
+import { Worker } from 'worker_threads'
+import { join } from 'path'
+import { plugins } from '../plugins'
 
 export function registerScanHandlers(): void {
   // 选择文件夹
@@ -22,7 +23,27 @@ export function registerScanHandlers(): void {
 
   // 开始扫描
   ipcMain.handle('start-scan', async (_event, projectPath: string) => {
-    return await runScanner(projectPath, plugins)
+    return new Promise((resolve, reject) => {
+      // 启动扫描线程
+      const worker = new Worker(join(__dirname, 'workers', 'scanner-worker.js'))
+
+      // 监听扫描线程消息
+      worker.on('message', (msg: { type: string; results?: IScanResult[]; message?: string }) => {
+        if (msg.type === 'complete') {
+          resolve(msg.results)
+          worker.terminate()
+        } else if (msg.type === 'error') {
+          reject(new Error(msg.message))
+          worker.terminate()
+        }
+      })
+      // 监听扫描线程错误
+      worker.on('error', (error: Error) => {
+        reject(error)
+        worker.terminate()
+      })
+      worker.postMessage(projectPath)
+    })
   })
 
   // 导出报告
@@ -84,57 +105,87 @@ export function registerScanHandlers(): void {
   })
 
   // AI 优化建议
-  ipcMain.handle('ai-analyze', async (_event, results: IScanResult[]) => {
-    if (results.length === 0) {
-      return '✅ 未发现风险项，无需优化建议。'
-    }
-    // 生成问题列表
-    const problemList = results
-      .map((r: IScanResult) => {
-        return `[${r.level === 'error' ? '高危' : r.level === 'warning' ? '警告' : '提示'}] ${r.plugin}: ${r.message}`
-      })
-      .join('\n')
-    // 构建 Prompt
-    const prompt = `你是一位资深前端工程化专家。以下是 Aegis Sentinel 对一个前端项目的检测结果。请针对每个问题给出具体的优化建议，包括问题原因、解决方案、以及相关的代码示例（如适用）。用 Markdown 格式输出。
+  ipcMain.handle(
+    'ai-analyze',
+    async (
+      _event,
+      results: IScanResult[],
+      aiConfig?: { apiKey: string; baseURL: string; model: string }
+    ) => {
+      if (results.length === 0) {
+        return '✅ 未发现风险项，无需优化建议。'
+      }
+      // 生成问题列表
+      const problemList = results
+        .map((r: IScanResult) => {
+          return `[${r.level === 'error' ? '高危' : r.level === 'warning' ? '警告' : '提示'}] ${r.plugin}: ${r.message}`
+        })
+        .join('\n')
+      // 构建 Prompt
+      const prompt = `你是一位资深前端工程化专家。以下是 Aegis Sentinel 对一个前端项目的检测结果。请针对每个问题给出具体的优化建议，包括问题原因、解决方案、以及相关的代码示例（如适用）。用 Markdown 格式输出。
     ${problemList}`
 
-    try {
-      const response = await axios.post(
-        'https://ark.cn-beijing.volces.com/api/v3/chat/completions', // 换成你用的 API 地址
-        {
-          model: 'doubao-seed-2-0-lite-260428', // 换成你用的模型名
-          messages: [
-            {
-              role: 'system',
-              content: '你是一个资深前端工程化专家，擅长诊断项目问题并给出可操作的优化建议。'
-            },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.3, // 低温度，让回答更聚焦
-          max_tokens: 2000
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.AI_API_KEY?.trim()}`, // 临时用环境变量
-            'Content-Type': 'application/json'
+      const apiKey = aiConfig?.apiKey || process.env.AI_API_KEY
+      const baseURL =
+        aiConfig?.baseURL || 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
+      const model = aiConfig?.model || 'doubao-seed-2-0-lite-260428'
+
+      try {
+        const response = await axios.post(
+          baseURL, // 换成你用的 API 地址
+          {
+            model, // 换成你用的模型名
+            messages: [
+              {
+                role: 'system',
+                content: '你是一个资深前端工程化专家，擅长诊断项目问题并给出可操作的优化建议。'
+              },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.3, // 低温度，让回答更聚焦
+            max_tokens: 2000
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey?.trim()}`, // 临时用环境变量
+              'Content-Type': 'application/json'
+            }
           }
+        )
+        return response.data.choices[0].message.content
+      } catch (error: unknown) {
+        let errMsg = '未知错误'
+        if (error instanceof Error) {
+          errMsg = error.message
         }
-      )
-      return response.data.choices[0].message.content
-    } catch (error: unknown) {
-      let errMsg = '未知错误'
-      if (error instanceof Error) {
-        errMsg = error.message
+        // 捕获axios专用错误，输出HTTP状态码
+        const axiosErr = error as unknown as AxiosError
+        if (axiosErr.isAxiosError) {
+          const status = axiosErr.response?.status ?? '无状态码'
+          const statusText = axiosErr.response?.statusText ?? ''
+          errMsg = `接口请求失败，HTTP状态：${status} ${statusText}，错误详情：${errMsg}`
+        }
+        // 仅返回纯字符串，不带任何带循环引用的原生对象
+        return `AI 调用失败：${errMsg}`
       }
-      // 捕获axios专用错误，输出HTTP状态码
-      const axiosErr = error as unknown as AxiosError
-      if (axiosErr.isAxiosError) {
-        const status = axiosErr.response?.status ?? '无状态码'
-        const statusText = axiosErr.response?.statusText ?? ''
-        errMsg = `接口请求失败，HTTP状态：${status} ${statusText}，错误详情：${errMsg}`
-      }
-      // 仅返回纯字符串，不带任何带循环引用的原生对象
-      return `AI 调用失败：${errMsg}`
     }
+  )
+
+  // 获取插件状态
+  ipcMain.handle('get-plugins', async () => {
+    return plugins.map((p) => ({
+      name: p.name,
+      enabled: p.enabled
+    }))
+  })
+
+  // 切换插件状态
+  ipcMain.handle('toggle-plugin', async (_event, pluginName: string, enabled: boolean) => {
+    const plugin = plugins.find((p) => p.name === pluginName)
+    if (plugin) {
+      plugin.enabled = enabled
+      return true
+    }
+    return false
   })
 }

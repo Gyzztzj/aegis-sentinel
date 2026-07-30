@@ -13,6 +13,8 @@ Aegis Sentinel 是一套基于 **微内核 + 插件化架构** 的本地前端�
 - 🤖 **AI 优化建议**：结合 AI 大模型输出结构化优化建议
 - 📊 **多维度检测**：依赖风险、配置规范、代码质量等全方位扫描
 - 📝 **报告导出**：支持 Markdown 格式检测报告导出
+- 📋 **历史记录**：完整保存检测历史，支持快速查看和管理
+- 🎨 **现代化界面**：基于设计系统的精美UI，支持信息分类标签化展示
 
 ## 🚀 快速开始
 
@@ -86,6 +88,8 @@ src/
 │   ├── ipc/              # IPC 通信
 │   │   └── scan-handlers.ts
 │   ├── types/            # 类型定义
+│   ├── workers/          # 后台工作线程
+│   │   └── scanner-worker.ts
 │   └── index.ts          # 入口文件
 ├── preload/              # 预加载脚本
 │   ├── index.ts          # 预加载逻辑
@@ -96,8 +100,27 @@ src/
         ├── App.tsx       # 主应用组件
         ├── main.tsx      # 入口文件
         ├── components/   # 组件目录
+        │   ├── Button.tsx        # 按钮组件
+        │   ├── Card.tsx          # 卡片组件
+        │   ├── Badge.tsx         # 徽章组件
+        │   ├── Input.tsx         # 输入框组件
+        │   ├── Tabs.tsx          # 标签页组件
+        │   ├── Sidebar.tsx       # 侧边栏组件
+        │   ├── ScanPage.tsx      # 检测页面
+        │   ├── HistoryPage.tsx   # 历史记录页面
+        │   ├── ConfigPage.tsx    # 配置页面
+        │   ├── ResultItem.tsx    # 结果项组件
+        │   ├── HistoryItem.tsx   # 历史项组件
+        │   ├── Loading.tsx       # 加载组件
+        │   ├── EmptyState.tsx    # 空状态组件
+        │   ├── ToggleSwitch.tsx  # 开关组件
         │   └── Versions.tsx
-        └── assets/       # 静态资源
+        ├── types/         # 类型定义
+        │   └── index.ts
+        ├── utils/         # 工具函数
+        │   ├── config-store.ts   # 配置存储
+        │   └── db.ts             # IndexedDB 操作
+        └── assets/        # 静态资源
             ├── base.css
             ├── main.css
             ├── electron.svg
