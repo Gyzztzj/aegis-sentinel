@@ -6,11 +6,13 @@ import { createContext, IScanContext } from './context'
 
 export async function runScanner(
   projectPath: string,
-  plugins: IScanPlugin[]
+  plugins: IScanPlugin[],
+  enabledPluginNames: string[]
 ): Promise<IScanContext> {
   const ctx = createContext(projectPath)
-  // 过滤启用的插件
-  const enabledPlugins = plugins.filter((p) => p.enabled)
+  // 按主进程传递的启用列表过滤插件，而非读取插件自身 enabled 属性
+  const enabledPluginSet = new Set(enabledPluginNames)
+  const enabledPlugins = plugins.filter((p) => enabledPluginSet.has(p.name))
 
   // 并行运行
   const resultsArrays = await Promise.all(

@@ -42,7 +42,9 @@ export function registerScanHandlers(): void {
         reject(error)
         worker.terminate()
       })
-      worker.postMessage(projectPath)
+      // 传递主进程当前的插件启用状态，避免 Worker 读取到过期的独立副本
+      const enabledPluginNames = plugins.filter((p) => p.enabled).map((p) => p.name)
+      worker.postMessage({ projectPath, enabledPluginNames })
     })
   })
 

@@ -34,10 +34,7 @@ export function Tabs({ tabs, activeTab, onTabChange }: TabsProps): React.ReactNo
       </div>
       <div className="tabs-content">
         {tabs.map((tab) => (
-          <div
-            key={tab.id}
-            className={`tab-panel ${activeTab === tab.id ? 'active' : ''}`}
-          >
+          <div key={tab.id} className={`tab-panel ${activeTab === tab.id ? 'active' : ''}`}>
             {tab.children}
           </div>
         ))}

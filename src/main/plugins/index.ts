@@ -9,6 +9,8 @@ import { checkBuildArtifactsPlugin } from './check-build-artifacts'
 import { checkBrowserslistPlugin } from './check-browserslist'
 import { checkPackageManagerPlugin } from './check-package-manager'
 import { checkNodeVersionPlugin } from './check-node-version'
+import { checkEslintrcPlugin } from './check-eslintrc'
+import { checkViteConfigPlugin } from './check-vite-config'
 import { IScanPlugin } from '../types'
 
 export const plugins: IScanPlugin[] = [
@@ -19,5 +21,7 @@ export const plugins: IScanPlugin[] = [
   checkBuildArtifactsPlugin,
   checkBrowserslistPlugin,
   checkPackageManagerPlugin,
-  checkNodeVersionPlugin
+  checkNodeVersionPlugin,
+  checkEslintrcPlugin,
+  checkViteConfigPlugin
 ]

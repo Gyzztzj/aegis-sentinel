@@ -30,7 +30,11 @@ export default function ConfigPage(): React.ReactNode {
         for (const plugin of pluginList) {
           const savedState = cfg.plugins[plugin.name]
           if (savedState !== undefined) {
-            await window.electron.ipcRenderer.invoke('toggle-plugin', plugin.name, savedState.enabled)
+            await window.electron.ipcRenderer.invoke(
+              'toggle-plugin',
+              plugin.name,
+              savedState.enabled
+            )
           }
         }
 
@@ -85,85 +89,13 @@ export default function ConfigPage(): React.ReactNode {
   }
 
   return (
-    <div style={{ width: '100%', maxWidth: '600px' }}>
-      {/* AI 设置 */}
-      <Card title="🤖 AI 大模型配置">
-        <Input
-          label="API Key"
-          type="password"
-          value={config.ai.apiKey}
-          onChange={(e) =>
-            setConfig({ ...config, ai: { ...config.ai, apiKey: e.target.value } })
-          }
-          placeholder="sk-xxxxxxxx"
-        />
-        <Input
-          label="Endpoint"
-          value={config.ai.baseURL}
-          onChange={(e) =>
-            setConfig({ ...config, ai: { ...config.ai, baseURL: e.target.value } })
-          }
-          placeholder="https://api.example.com/v1/chat/completions"
-        />
-        <Input
-          label="Model"
-          value={config.ai.model}
-          onChange={(e) =>
-            setConfig({ ...config, ai: { ...config.ai, model: e.target.value } })
-          }
-          placeholder="gpt-4o-mini"
-        />
-      </Card>
-
-      {/* 插件管理 */}
-      <Card title="🔌 检测插件管理" style={{ marginTop: '24px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {plugins.map((plugin, index) => (
-            <div
-              key={plugin.name}
-              className="animate-slide-in"
-              style={{
-                animationDelay: `${index * 50}ms`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '16px',
-                background: plugin.enabled ? '#f0fdf4' : '#f9fafb',
-                borderRadius: '12px',
-                border: `1px solid ${plugin.enabled ? '#dcfce7' : '#e5e7eb'}`,
-                transition: 'all 200ms ease-in-out'
-              }}
-            >
-              <div>
-                <div
-                  style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: plugin.enabled ? '#166534' : '#374151'
-                  }}
-                >
-                  {plugin.name}
-                </div>
-                <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
-                  {plugin.enabled ? '已启用，将在检测时运行' : '已禁用，检测时将跳过'}
-                </div>
-              </div>
-              <ToggleSwitch
-                checked={plugin.enabled}
-                onChange={(checked) => handleTogglePlugin(plugin.name, checked)}
-              />
-            </div>
-          ))}
+    <div className="page-scroll-container config-page">
+      <div className="config-page-header">
+        <div className="config-page-header-info">
+          <h2 className="config-page-title">配置管理</h2>
+          <p className="config-page-desc">管理检测插件与 AI 大模型设置</p>
         </div>
-      </Card>
-
-      {/* 保存按钮 */}
-      <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'flex-end' }}>
-        <Button
-          onClick={handleSave}
-          variant={saved ? 'secondary' : 'primary'}
-          size="lg"
-        >
+        <Button onClick={handleSave} variant={saved ? 'secondary' : 'primary'} size="sm">
           {saved ? (
             <>
               <span>✅</span>
@@ -176,6 +108,66 @@ export default function ConfigPage(): React.ReactNode {
             </>
           )}
         </Button>
+      </div>
+
+      <div className="config-scroll-area">
+        {/* AI 设置 */}
+        <Card title="🤖 AI 大模型配置">
+          <Input
+            label="API Key"
+            type="password"
+            value={config.ai.apiKey}
+            onChange={(e) => setConfig({ ...config, ai: { ...config.ai, apiKey: e.target.value } })}
+            placeholder="sk-xxxxxxxx"
+          />
+          <Input
+            label="Endpoint"
+            value={config.ai.baseURL}
+            onChange={(e) =>
+              setConfig({ ...config, ai: { ...config.ai, baseURL: e.target.value } })
+            }
+            placeholder="https://api.example.com/v1/chat/completions"
+          />
+          <Input
+            label="Model"
+            value={config.ai.model}
+            onChange={(e) => setConfig({ ...config, ai: { ...config.ai, model: e.target.value } })}
+            placeholder="gpt-4o-mini"
+          />
+        </Card>
+
+        {/* 插件管理 */}
+        <Card title="🔌 检测插件管理">
+          <div className="config-plugin-list">
+            {plugins.map((plugin, index) => (
+              <div
+                key={plugin.name}
+                className="config-plugin-row animate-slide-in"
+                style={{
+                  animationDelay: `${index * 50}ms`,
+                  background: plugin.enabled ? '#f0fdf4' : '#f9fafb',
+                  border: `1px solid ${plugin.enabled ? '#dcfce7' : '#e5e7eb'}`
+                }}
+              >
+                <div className="config-plugin-info">
+                  <div
+                    className="config-plugin-name"
+                    style={{ color: plugin.enabled ? '#166534' : '#374151' }}
+                  >
+                    {plugin.name}
+                  </div>
+                  <div className="config-plugin-status">
+                    {plugin.enabled ? '已启用，将在检测时运行' : '已禁用，检测时将跳过'}
+                  </div>
+                </div>
+                <ToggleSwitch
+                  checked={plugin.enabled}
+                  onChange={(checked) => handleTogglePlugin(plugin.name, checked)}
+                />
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
     </div>
   )
