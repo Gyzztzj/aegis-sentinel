@@ -10,11 +10,12 @@ Aegis Sentinel 是一套基于 **微内核 + 插件化架构** 的本地前端�
 
 - 🔒 **本地运行**：所有检测逻辑在本地执行，保障代码隐私安全
 - 🧩 **插件化架构**：通过插件机制无限扩展检测能力
-- 🤖 **AI 优化建议**：结合 AI 大模型输出结构化优化建议
+- 🤖 **AI 优化建议**：结合 AI 大模型输出结构化优化建议，支持流式输出
 - 📊 **多维度检测**：依赖风险、配置规范、代码质量等全方位扫描
 - 📝 **报告导出**：支持 Markdown 格式检测报告导出
-- 📋 **历史记录**：完整保存检测历史，支持快速查看和管理
-- 🎨 **现代化界面**：基于设计系统的精美UI，支持信息分类标签化展示
+- 📋 **历史记录**：完整保存检测历史，支持快速查看、对比和管理
+- 🎨 **现代化界面**：固定头部 + 独立滚动布局，左右分栏设计
+- 🔄 **配置持久化**：插件开关、AI 配置自动保存，重启后立即生效
 
 ## 🚀 快速开始
 
@@ -73,7 +74,7 @@ AI_API_KEY=your-api-key-here
 src/
 ├── main/                 # 主进程
 │   ├── core/             # 核心模块
-│   │   ├── scanner.ts    # 扫描器
+│   │   ├── scanner.ts    # 扫描器（并行扫描）
 │   │   └── context.ts    # 扫描上下文
 │   ├── plugins/          # 插件目录
 │   │   ├── dependency-audit.ts          # 依赖审计插件
@@ -84,12 +85,14 @@ src/
 │   │   ├── check-browserslist.ts        # 浏览器兼容性检测插件
 │   │   ├── check-package-manager.ts     # 包管理器一致性检测插件
 │   │   ├── check-node-version.ts        # Node 版本管理检测插件
+│   │   ├── check-eslintrc.ts            # ESLint 配置检测插件
+│   │   ├── check-vite-config.ts         # Vite 配置检测插件
 │   │   └── index.ts                     # 插件注册
 │   ├── ipc/              # IPC 通信
-│   │   └── scan-handlers.ts
+│   │   └── scan-handlers.ts             # 扫描/AI/插件配置处理
 │   ├── types/            # 类型定义
 │   ├── workers/          # 后台工作线程
-│   │   └── scanner-worker.ts
+│   │   └── scanner-worker.ts            # 扫描 Worker
 │   └── index.ts          # 入口文件
 ├── preload/              # 预加载脚本
 │   ├── index.ts          # 预加载逻辑
@@ -106,25 +109,23 @@ src/
         │   ├── Input.tsx         # 输入框组件
         │   ├── Tabs.tsx          # 标签页组件
         │   ├── Sidebar.tsx       # 侧边栏组件
-        │   ├── ScanPage.tsx      # 检测页面
+        │   ├── ScanPage.tsx      # 检测页面（左右分栏）
         │   ├── HistoryPage.tsx   # 历史记录页面
+        │   ├── CompareResult.tsx # 对比结果页面
         │   ├── ConfigPage.tsx    # 配置页面
         │   ├── ResultItem.tsx    # 结果项组件
         │   ├── HistoryItem.tsx   # 历史项组件
         │   ├── Loading.tsx       # 加载组件
         │   ├── EmptyState.tsx    # 空状态组件
-        │   ├── ToggleSwitch.tsx  # 开关组件
-        │   └── Versions.tsx
+        │   └── ToggleSwitch.tsx  # 开关组件
         ├── types/         # 类型定义
         │   └── index.ts
         ├── utils/         # 工具函数
-        │   ├── config-store.ts   # 配置存储
-        │   └── db.ts             # IndexedDB 操作
+        │   ├── config-store.ts   # 配置存储（IndexedDB）
+        │   └── db.ts             # 历史记录存储
         └── assets/        # 静态资源
-            ├── base.css
-            ├── main.css
-            ├── electron.svg
-            └── wavy-lines.svg
+            ├── base.css          # 基础样式 + CSS 变量
+            └── main.css          # 组件样式 + 布局
 ```
 
 ## 🧩 插件开发
@@ -225,6 +226,16 @@ export const myPlugin: IScanPlugin = {
 
 - ✅ .nvmrc 文件检查
 - ✅ engines.node 配置检查
+
+### ESLint 配置检测插件
+
+- ✅ ESLint 配置文件存在性检查
+- ✅ ESLint 配置规范性验证
+
+### Vite 配置检测插件
+
+- ✅ Vite 配置文件存在性检查
+- ✅ Vite 构建配置合理性验证
 
 ## 🗺️ 路线图
 
