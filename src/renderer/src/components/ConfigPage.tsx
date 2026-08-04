@@ -70,6 +70,8 @@ export default function ConfigPage(): React.ReactNode {
   const handleSave = async (): Promise<void> => {
     if (!config) return
     await saveConfig(config)
+    // 同步插件配置到主进程，确保配置立即生效
+    await window.electron.ipcRenderer.invoke('sync-plugin-config', config)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }

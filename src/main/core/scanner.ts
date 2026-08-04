@@ -1,5 +1,5 @@
 /**
- * 处理扫描相关事件
+ * 运行扫描器
  */
 import { IScanPlugin } from '../types'
 import { createContext, IScanContext } from './context'

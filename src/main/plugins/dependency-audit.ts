@@ -117,7 +117,6 @@ export const dependencyAuditPlugin: IScanPlugin = {
       })
     }
 
-    console.log('dependencyAuditPlugin results', results)
     return results
   }
 }

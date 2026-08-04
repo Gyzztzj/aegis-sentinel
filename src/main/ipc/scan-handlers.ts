@@ -173,6 +173,102 @@ export function registerScanHandlers(): void {
     }
   )
 
+  // AI 优化建议流式输出
+  ipcMain.handle(
+    'ai-analyze-stream',
+    async (
+      event,
+      results: IScanResult[],
+      aiConfig?: { apiKey: string; baseURL: string; model: string }
+    ) => {
+      const sender = event.sender
+      if (results.length === 0) {
+        sender.send('ai-stream-chunk', { done: true, content: '✅ 未发现风险项，无需优化建议。' })
+        return
+      }
+
+      const apiKey = aiConfig?.apiKey || process.env.AI_API_KEY
+      const baseURL =
+        aiConfig?.baseURL || 'https://ark.cn-beijing.volces.com/api/v3/chat/completions'
+      const model = aiConfig?.model || 'doubao-seed-2-0-lite-260428'
+
+      const problemList = results
+        .map((r: IScanResult) => {
+          return `[${r.level === 'error' ? '高危' : r.level === 'warning' ? '警告' : '提示'}] ${r.plugin}: ${r.message}`
+        })
+        .join('\n')
+
+      const prompt = `你是一位资深前端工程化专家。以下是 Aegis Sentinel 对一个前端项目的检测结果。请针对每个问题给出具体的优化建议，包括问题原因、解决方案、以及相关的代码示例（如适用）。用 Markdown 格式输出。\n\n检测结果：\n${problemList}`
+
+      try {
+        const response = await axios.post(
+          baseURL, // 换成你用的 API 地址
+          {
+            model, // 换成你用的模型名
+            messages: [
+              {
+                role: 'system',
+                content: '你是一个资深前端工程化专家，擅长诊断项目问题并给出可操作的优化建议。'
+              },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.3, // 低温度，让回答更聚焦
+            max_tokens: 2000,
+            stream: true
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${apiKey?.trim()}`, // 临时用环境变量
+              'Content-Type': 'application/json'
+            },
+            responseType: 'stream'
+          }
+        )
+
+        const stream = response.data
+        stream.on('data', (chunk: Buffer) => {
+          const lines = chunk
+            .toString()
+            .split('\n')
+            .filter((line) => line.trim() !== '')
+
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              const data = line.slice(6)
+              if (data === '[DONE]') {
+                sender.send('ai-stream-chunk', { done: true, content: '' })
+                return
+              }
+              try {
+                const parsed = JSON.parse(data)
+                const content = parsed.choices?.[0]?.delta?.content || ''
+
+                if (content) {
+                  sender.send('ai-stream-chunk', {
+                    done: false,
+                    content
+                  })
+                }
+              } catch (error) {
+                console.error(error)
+              }
+            }
+          }
+        })
+
+        stream.on('error', (err: Error) => {
+          sender.send('ai-stream-error', err.message)
+        })
+
+        stream.on('end', () => {
+          sender.send('ai-stream-chunk', { done: true, content: '' })
+        })
+      } catch (error: unknown) {
+        sender.send('ai-stream-error', (error as unknown as Error).message || '未知错误')
+      }
+    }
+  )
+
   // 获取插件状态
   ipcMain.handle('get-plugins', async () => {
     return plugins.map((p) => ({
@@ -190,4 +286,18 @@ export function registerScanHandlers(): void {
     }
     return false
   })
+
+  // 批量同步插件配置（启动时从持久化存储加载）
+  ipcMain.handle(
+    'sync-plugin-config',
+    async (_event, config: { plugins: { [name: string]: { enabled: boolean } } }) => {
+      for (const plugin of plugins) {
+        const saved = config.plugins[plugin.name]
+        if (saved !== undefined) {
+          plugin.enabled = saved.enabled
+        }
+      }
+      return true
+    }
+  )
 }

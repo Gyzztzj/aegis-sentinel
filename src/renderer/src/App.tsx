@@ -18,7 +18,13 @@ function App(): React.ReactNode {
   const [page, setPage] = useState<TPage>('scan')
 
   useEffect(() => {
-    loadConfig().then(setConfig).catch(console.error)
+    loadConfig()
+      .then(async (cfg) => {
+        setConfig(cfg)
+        // 同步插件配置到主进程，确保重启后配置生效
+        await window.electron.ipcRenderer.invoke('sync-plugin-config', cfg)
+      })
+      .catch(console.error)
   }, [])
 
   const handleLoadHistory = (record: IHistoryRecord): void => {
